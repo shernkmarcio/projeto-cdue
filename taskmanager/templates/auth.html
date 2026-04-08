@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Criar Conta' if mode == 'register' else 'Entrar' }} — TaskManager{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="8" fill="#4F46E5"/>
+        <path d="M8 16l5 5 11-10" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>TaskManager</span>
+    </div>
+    <h1>{{ 'Criar conta' if mode == 'register' else 'Bem-vindo de volta' }}</h1>
+    <p class="auth-sub">{{ 'Organize suas tarefas com categorias e prioridades.' if mode == 'register' else 'Entre para acessar suas tarefas.' }}</p>
+
+    <form method="POST" action="{{ url_for('register' if mode == 'register' else 'login') }}">
+      {% if mode == 'register' %}
+      <div class="field">
+        <label for="name">Nome</label>
+        <input type="text" id="name" name="name" placeholder="Seu nome completo" required>
+      </div>
+      {% endif %}
+      <div class="field">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" name="email" placeholder="voce@email.com" required>
+      </div>
+      <div class="field">
+        <label for="password">Senha</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">
+        {{ 'Criar conta' if mode == 'register' else 'Entrar' }}
+      </button>
+    </form>
+
+    <p class="auth-toggle">
+      {% if mode == 'register' %}
+        Já tem conta? <a href="{{ url_for('login') }}">Entrar</a>
+      {% else %}
+        Não tem conta? <a href="{{ url_for('register') }}">Criar conta</a>
+      {% endif %}
+    </p>
+  </div>
+</div>
+{% endblock %}

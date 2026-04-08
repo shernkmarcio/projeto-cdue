@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — TaskManager{% endblock %}
+{% block content %}
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="8" fill="#4F46E5"/>
+        <path d="M8 16l5 5 11-10" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>TaskManager</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('dashboard') }}" class="nav-link active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="{{ url_for('chat') }}" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Chat
+        <span class="nav-badge" id="totalUnread" style="display:none"></span>
+      </a>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="user-avatar">{{ session['user_name'][0].upper() }}</div>
+      <div class="user-info">
+        <span class="user-name">{{ session['user_name'] }}</span>
+      </div>
+      <a href="{{ url_for('logout') }}" class="logout-btn" title="Sair">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Minhas Tarefas</h1>
+        <p class="page-sub">Gerencie suas tarefas com categorias e prioridades</p>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('createModal')">
+        + Nova Tarefa
+      </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number">{{ stats.total }}</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">{{ stats.pending }}</div>
+        <div class="stat-label">Pendentes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number stat-success">{{ stats.done }}</div>
+        <div class="stat-label">Concluídas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number stat-danger">{{ stats.overdue }}</div>
+        <div class="stat-label">Atrasadas</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <form class="filters-bar" method="GET" action="{{ url_for('dashboard') }}">
+      <input class="filter-input" type="text" name="q" placeholder="Buscar tarefas..." value="{{ filters.q }}">
+      <select class="filter-select" name="cat" onchange="this.form.submit()">
+        <option value="">Todas categorias</option>
+        {% for c in ['Trabalho','Pessoal','Estudos','Saúde','Outros'] %}
+        <option value="{{ c }}" {{ 'selected' if filters.cat == c }}>{{ c }}</option>
+        {% endfor %}
+      </select>
+      <select class="filter-select" name="pri" onchange="this.form.submit()">
+        <option value="">Todas prioridades</option>
+        {% for p in ['Alta','Média','Baixa'] %}
+        <option value="{{ p }}" {{ 'selected' if filters.pri == p }}>{{ p }}</option>
+        {% endfor %}
+      </select>
+      <select class="filter-select" name="status" onchange="this.form.submit()">
+        <option value="">Todos os status</option>
+        <option value="pending" {{ 'selected' if filters.status == 'pending' }}>Pendentes</option>
+        <option value="done" {{ 'selected' if filters.status == 'done' }}>Concluídas</option>
+      </select>
+      <button type="submit" class="btn">Buscar</button>
+      {% if filters.q or filters.cat or filters.pri or filters.status %}
+      <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">Limpar</a>
+      {% endif %}
+    </form>
+
+    <!-- Tasks -->
+    <div class="tasks-list">
+      {% if tasks %}
+        {% for task in tasks %}
+        <div class="task-card {% if task.done %}task-done{% endif %} {% if not task.done and task.due_date and task.due_date < today %}task-overdue{% endif %}">
+          <form method="POST" action="{{ url_for('toggle_task', task_id=task.id) }}" class="toggle-form">
+            <button type="submit" class="check-btn {% if task.done %}checked{% endif %}">
+              {% if task.done %}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              {% endif %}
+            </button>
+          </form>
+
+          <div class="task-body">
+            <div class="task-title">{{ task.title }}</div>
+            {% if task.description %}
+            <div class="task-desc">{{ task.description }}</div>
+            {% endif %}
+            <div class="task-meta">
+              <span class="badge badge-cat-{{ task.category | lower | replace('ú','u') | replace('é','e') }}">{{ task.category }}</span>
+              <span class="badge badge-pri-{{ task.priority | lower | replace('é','e') }}">{{ task.priority }}</span>
+              {% if task.due_date %}
+              <span class="badge badge-date {% if not task.done and task.due_date < today %}badge-overdue{% endif %}">
+                {% if not task.done and task.due_date < today %}Atrasada: {% endif %}
+                {{ task.due_date | replace('-', '/') }}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="task-actions">
+            <a href="{{ url_for('edit_task', task_id=task.id) }}" class="action-btn" title="Editar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </a>
+            <form method="POST" action="{{ url_for('delete_task', task_id=task.id) }}" onsubmit="return confirm('Excluir esta tarefa?')">
+              <button type="submit" class="action-btn action-danger" title="Excluir">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <p>Nenhuma tarefa encontrada.</p>
+          <button class="btn btn-primary" onclick="openModal('createModal')">Criar primeira tarefa</button>
+        </div>
+      {% endif %}
+    </div>
+  </main>
+</div>
+
+<!-- Modal: Nova Tarefa -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Nova Tarefa</h2>
+      <button class="modal-close" onclick="closeModal('createModal')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('create_task') }}">
+      <div class="field">
+        <label>Título *</label>
+        <input type="text" name="title" placeholder="Ex: Revisar relatório" required autofocus>
+      </div>
+      <div class="field">
+        <label>Descrição</label>
+        <textarea name="description" rows="2" placeholder="Detalhes opcionais..."></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Categoria</label>
+          <select name="category">
+            {% for c in ['Trabalho','Pessoal','Estudos','Saúde','Outros'] %}
+            <option>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Prioridade</label>
+          <select name="priority">
+            {% for p in ['Alta','Média','Baixa'] %}
+            <option>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Data de conclusão</label>
+        <input type="date" name="due_date">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="closeModal('createModal')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Criar Tarefa</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% block title %}Chat — TaskManager{% endblock %}
+{% block content %}
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="8" fill="#4F46E5"/>
+        <path d="M8 16l5 5 11-10" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>TaskManager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('dashboard') }}" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="{{ url_for('chat') }}" class="nav-link active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Chat
+        <span class="nav-badge" id="totalUnread" style="display:none"></span>
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar">{{ session['user_name'][0].upper() }}</div>
+      <div class="user-info"><span class="user-name">{{ session['user_name'] }}</span></div>
+      <a href="{{ url_for('logout') }}" class="logout-btn" title="Sair">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Chat layout -->
+  <main class="chat-layout">
+
+    <!-- Contacts -->
+    <div class="contacts-panel">
+      <div class="contacts-header">
+        <h2>Conversas</h2>
+      </div>
+      <div class="contacts-list">
+        {% if users %}
+          {% for u in users %}
+          <a href="{{ url_for('chat_conversation', peer_id=u.id) }}"
+             class="contact-item {% if peer is defined and peer.id == u.id %}active{% endif %}">
+            <div class="contact-avatar">{{ u.name[0].upper() }}</div>
+            <div class="contact-info">
+              <div class="contact-name">{{ u.name }}</div>
+              <div class="contact-last">
+                {% if last_msgs.get(u.id) %}
+                  {{ last_msgs[u.id]['message'][:35] }}{% if last_msgs[u.id]['message']|length > 35 %}…{% endif %}
+                {% else %}
+                  <span style="opacity:0.5">Nenhuma mensagem</span>
+                {% endif %}
+              </div>
+            </div>
+            {% if unread_map.get(u.id) %}
+            <span class="unread-badge">{{ unread_map[u.id] }}</span>
+            {% endif %}
+          </a>
+          {% endfor %}
+        {% else %}
+          <div class="no-contacts">Nenhum outro usuário cadastrado ainda.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="messages-panel">
+      {% if peer is defined %}
+        <!-- Header -->
+        <div class="messages-header">
+          <div class="contact-avatar">{{ peer.name[0].upper() }}</div>
+          <div>
+            <div class="msg-peer-name">{{ peer.name }}</div>
+            <div class="msg-peer-status" id="peerStatus">online</div>
+          </div>
+        </div>
+
+        <!-- Messages area -->
+        <div class="messages-area" id="messagesArea">
+          {% if messages %}
+            {% set ns = namespace(prev_date='') %}
+            {% for msg in messages %}
+              {% set msg_date = msg.created_at[:10] %}
+              {% if msg_date != ns.prev_date %}
+                <div class="date-divider">
+                  <span>{{ msg_date | replace('-', '/') }}</span>
+                </div>
+                {% set ns.prev_date = msg_date %}
+              {% endif %}
+              <div class="message-row {% if msg.sender_id == session.user_id %}mine{% else %}theirs{% endif %}"
+                   data-id="{{ msg.id }}">
+                {% if msg.sender_id != session.user_id %}
+                <div class="msg-avatar">{{ msg.sender_name[0].upper() }}</div>
+                {% endif %}
+                <div class="bubble">
+                  <div class="bubble-text">{{ msg.message }}</div>
+                  <div class="bubble-time">{{ msg.created_at[11:16] }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="chat-empty">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              <p>Nenhuma mensagem ainda.<br>Diga olá para {{ peer.name }}!</p>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Input -->
+        <form class="message-form" method="POST"
+              action="{{ url_for('send_message', peer_id=peer.id) }}"
+              id="msgForm">
+          <input type="text" name="message" id="msgInput"
+                 placeholder="Digite uma mensagem..." autocomplete="off" required>
+          <button type="submit" class="send-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </form>
+
+      {% else %}
+        <!-- No conversation selected -->
+        <div class="chat-welcome">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <h3>Selecione uma conversa</h3>
+          <p>Escolha um contato à esquerda para começar a conversar.</p>
+        </div>
+      {% endif %}
+    </div>
+  </main>
+</div>
+
+{% if peer is defined %}
+<script>
+const PEER_ID   = {{ peer.id }};
+const MY_ID     = {{ session['user_id'] }};
+const POLL_URL  = "{{ url_for('poll_messages', peer_id=peer.id) }}";
+let lastId      = {{ messages[-1].id if messages else 0 }};
+const area      = document.getElementById('messagesArea');
+
+function scrollBottom() { area.scrollTop = area.scrollHeight; }
+scrollBottom();
+
+function formatTime(ts) {
+  return ts ? ts.substring(11,16) : '';
+}
+
+function addBubble(msg) {
+  const mine = msg.sender_id === MY_ID;
+  const row  = document.createElement('div');
+  row.className = 'message-row ' + (mine ? 'mine' : 'theirs');
+  row.dataset.id = msg.id;
+  if (!mine) {
+    row.innerHTML = `<div class="msg-avatar">${msg.sender_name[0].toUpperCase()}</div>`;
+  }
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = `<div class="bubble-text">${escHtml(msg.message)}</div><div class="bubble-time">${formatTime(msg.created_at)}</div>`;
+  row.appendChild(bubble);
+  // Remove empty state if present
+  const empty = area.querySelector('.chat-empty');
+  if (empty) empty.remove();
+  area.appendChild(row);
+  scrollBottom();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function poll() {
+  try {
+    const res  = await fetch(POLL_URL + '?after=' + lastId);
+    const msgs = await res.json();
+    msgs.forEach(m => {
+      if (!document.querySelector(`[data-id="${m.id}"]`)) {
+        addBubble(m);
+        if (m.id > lastId) lastId = m.id;
+      }
+    });
+  } catch(e) {}
+}
+
+setInterval(poll, 2500);
+
+// Submit via JS to avoid full page reload
+document.getElementById('msgForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const input = document.getElementById('msgInput');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const fd = new FormData();
+  fd.append('message', text);
+  await fetch(this.action, { method: 'POST', body: fd, redirect: 'manual' });
+  poll();
+});
+</script>
+{% endif %}
+{% endblock %}

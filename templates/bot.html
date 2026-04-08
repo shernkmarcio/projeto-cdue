@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% block title %}Assistente IA — TaskManager{% endblock %}
+{% block content %}
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="8" fill="#4F46E5"/>
+        <path d="M8 16l5 5 11-10" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>TaskManager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('dashboard') }}" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="{{ url_for('chat') }}" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Chat
+        <span class="nav-badge" id="totalUnread" style="display:none"></span>
+      </a>
+      <a href="{{ url_for('bot') }}" class="nav-link active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="18" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="6" cy="6" r="2" fill="currentColor" stroke="none"/></svg>
+        Assistente IA
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar">{{ session['user_name'][0].upper() }}</div>
+      <div class="user-info"><span class="user-name">{{ session['user_name'] }}</span></div>
+      <a href="{{ url_for('logout') }}" class="logout-btn" title="Sair">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Bot layout -->
+  <main class="bot-layout">
+
+    <div class="bot-header">
+      <div class="bot-avatar-wrap">
+        <div class="bot-avatar-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M12 11V5"/><circle cx="12" cy="4" r="1" fill="white" stroke="none"/><path d="M8 15h.01M12 15h.01M16 15h.01" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <div class="bot-name">Assistente IA</div>
+          <div class="bot-status" id="botStatus">
+            <span class="status-dot"></span> Online
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="clearChat()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        Limpar
+      </button>
+    </div>
+
+    <div class="bot-messages" id="botMessages">
+      <!-- Welcome -->
+      <div class="bot-msg-row bot-row">
+        <div class="bot-bubble-avatar">IA</div>
+        <div class="bot-bubble bot-bubble-in">
+          <p>Olá, <strong>{{ session['user_name'] }}</strong>! 👋</p>
+          <p>Sou seu Assistente IA. Posso ajudar com:</p>
+          <ul>
+            <li>Dúvidas sobre suas tarefas e prazos</li>
+            <li>Dicas de produtividade e organização</li>
+            <li>Como usar o TaskManager</li>
+            <li>Priorização e gestão de tempo</li>
+          </ul>
+          <p>Como posso te ajudar hoje?</p>
+        </div>
+      </div>
+
+      <!-- Quick questions -->
+      <div class="quick-questions" id="quickQuestions">
+        <button class="quick-btn" onclick="sendQuick('Quais minhas tarefas atrasadas?')">⚠️ Tarefas atrasadas</button>
+        <button class="quick-btn" onclick="sendQuick('Como priorizar minhas tarefas?')">🎯 Como priorizar</button>
+        <button class="quick-btn" onclick="sendQuick('Me dê dicas de produtividade')">💡 Dicas de produtividade</button>
+        <button class="quick-btn" onclick="sendQuick('Resumo das minhas tarefas pendentes')">📋 Resumo de pendentes</button>
+      </div>
+    </div>
+
+    <div class="bot-input-area">
+      <div class="bot-input-wrap">
+        <textarea id="botInput" placeholder="Faça uma pergunta..." rows="1"
+                  onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="bot-send-btn" id="sendBtn" onclick="sendMessage()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <p class="bot-disclaimer">Respostas geradas por IA · Powered by Claude</p>
+    </div>
+
+  </main>
+</div>
+
+<style>
+.bot-layout { display:flex; flex-direction:column; height:100vh; overflow:hidden; background:var(--bg); }
+
+.bot-header { display:flex; align-items:center; justify-content:space-between; padding:.9rem 1.5rem; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+.bot-avatar-wrap { display:flex; align-items:center; gap:10px; }
+.bot-avatar-icon { width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg,#4F46E5,#7C3AED); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.bot-name { font-size:15px; font-weight:600; }
+.bot-status { font-size:12px; color:var(--success); display:flex; align-items:center; gap:4px; margin-top:1px; }
+.status-dot { width:7px; height:7px; border-radius:50%; background:var(--success); display:inline-block; }
+
+.bot-messages { flex:1; overflow-y:auto; padding:1.25rem 1.5rem; display:flex; flex-direction:column; gap:12px; }
+
+.bot-msg-row { display:flex; align-items:flex-end; gap:8px; max-width:78%; }
+.bot-row { align-self:flex-start; }
+.user-row { align-self:flex-end; flex-direction:row-reverse; }
+
+.bot-bubble-avatar { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,#4F46E5,#7C3AED); color:white; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+.bot-bubble { padding:10px 14px; border-radius:16px; font-size:14px; line-height:1.6; max-width:100%; word-break:break-word; }
+.bot-bubble p { margin:0 0 6px; }
+.bot-bubble p:last-child { margin:0; }
+.bot-bubble ul { margin:6px 0 6px 18px; }
+.bot-bubble li { margin-bottom:3px; }
+.bot-bubble strong { font-weight:600; }
+.bot-bubble-in { background:var(--surface); border:1px solid var(--border); border-bottom-left-radius:4px; color:var(--text); }
+.bot-bubble-out { background:var(--indigo); color:white; border-bottom-right-radius:4px; }
+
+.quick-questions { display:flex; flex-wrap:wrap; gap:7px; padding-left:38px; }
+.quick-btn { background:var(--surface); border:1px solid var(--border-md); border-radius:20px; padding:6px 13px; font-size:12px; font-weight:500; color:var(--indigo); cursor:pointer; transition:all .15s; }
+.quick-btn:hover { background:#EEF2FF; border-color:var(--indigo); }
+
+.typing-bubble { display:flex; gap:4px; align-items:center; padding:12px 16px; }
+.typing-dot { width:7px; height:7px; border-radius:50%; background:var(--text-3); animation:typingBounce 1.2s infinite; }
+.typing-dot:nth-child(2) { animation-delay:.2s; }
+.typing-dot:nth-child(3) { animation-delay:.4s; }
+@keyframes typingBounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+.bot-input-area { padding:.9rem 1.5rem 1rem; background:var(--surface); border-top:1px solid var(--border); flex-shrink:0; }
+.bot-input-wrap { display:flex; align-items:flex-end; gap:8px; background:var(--bg); border:1px solid var(--border-md); border-radius:16px; padding:8px 8px 8px 14px; transition:border-color .15s; }
+.bot-input-wrap:focus-within { border-color:var(--indigo); box-shadow:0 0 0 3px rgba(79,70,229,.1); }
+.bot-input-wrap textarea { flex:1; border:none; background:transparent; resize:none; font-family:inherit; font-size:14px; color:var(--text); line-height:1.5; max-height:120px; outline:none; }
+.bot-send-btn { width:36px; height:36px; border-radius:10px; background:var(--indigo); border:none; color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:background .15s; }
+.bot-send-btn:hover { background:var(--indigo-dark); }
+.bot-send-btn:disabled { opacity:.45; cursor:not-allowed; }
+.bot-disclaimer { font-size:11px; color:var(--text-3); text-align:center; margin-top:6px; }
+
+/* Markdown-like rendering inside bubbles */
+.bot-bubble code { background:rgba(0,0,0,.07); padding:1px 5px; border-radius:4px; font-family:var(--font-mono); font-size:12px; }
+.bot-bubble-out code { background:rgba(255,255,255,.2); }
+</style>
+
+<script>
+let history = [];
+const messagesEl = document.getElementById('botMessages');
+const inputEl    = document.getElementById('botInput');
+const sendBtn    = document.getElementById('sendBtn');
+
+function scrollBot() { messagesEl.scrollTop = messagesEl.scrollHeight; }
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderMarkdown(text) {
+  return escHtml(text)
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/^### (.+)$/gm, '<strong>$1</strong>')
+    .replace(/^## (.+)$/gm,  '<strong>$1</strong>')
+    .replace(/^# (.+)$/gm,   '<strong>$1</strong>')
+    .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+}
+
+function addBubble(role, text) {
+  const isBot = role === 'assistant';
+  const row = document.createElement('div');
+  row.className = 'bot-msg-row ' + (isBot ? 'bot-row' : 'user-row');
+
+  if (isBot) {
+    row.innerHTML = `<div class="bot-bubble-avatar">IA</div>
+      <div class="bot-bubble bot-bubble-in"><p>${renderMarkdown(text)}</p></div>`;
+  } else {
+    row.innerHTML = `<div class="bot-bubble bot-bubble-out">${escHtml(text)}</div>`;
+  }
+  messagesEl.appendChild(row);
+  scrollBot();
+  return row;
+}
+
+function addTyping() {
+  const row = document.createElement('div');
+  row.className = 'bot-msg-row bot-row';
+  row.id = 'typingIndicator';
+  row.innerHTML = `<div class="bot-bubble-avatar">IA</div>
+    <div class="bot-bubble bot-bubble-in typing-bubble">
+      <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+    </div>`;
+  messagesEl.appendChild(row);
+  scrollBot();
+}
+
+function removeTyping() {
+  const t = document.getElementById('typingIndicator');
+  if (t) t.remove();
+}
+
+function hideQuickQuestions() {
+  const q = document.getElementById('quickQuestions');
+  if (q) q.style.display = 'none';
+}
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text || sendBtn.disabled) return;
+
+  hideQuickQuestions();
+  addBubble('user', text);
+  history.push({ role: 'user', content: text });
+  inputEl.value = '';
+  autoResize(inputEl);
+
+  sendBtn.disabled = true;
+  document.getElementById('botStatus').innerHTML = '<span class="status-dot" style="background:var(--warning)"></span> Digitando...';
+  addTyping();
+
+  try {
+    const res  = await fetch('/bot/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, history: history.slice(0,-1) })
+    });
+    const data = await res.json();
+    removeTyping();
+
+    if (data.error) {
+      addBubble('assistant', '❌ Erro: ' + data.error);
+    } else {
+      addBubble('assistant', data.reply);
+      history.push({ role: 'assistant', content: data.reply });
+    }
+  } catch(e) {
+    removeTyping();
+    addBubble('assistant', '❌ Não foi possível conectar ao servidor. Tente novamente.');
+  }
+
+  sendBtn.disabled = false;
+  document.getElementById('botStatus').innerHTML = '<span class="status-dot"></span> Online';
+  inputEl.focus();
+}
+
+function sendQuick(text) {
+  inputEl.value = text;
+  sendMessage();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function clearChat() {
+  history = [];
+  const rows = messagesEl.querySelectorAll('.bot-msg-row, .quick-questions');
+  rows.forEach(r => r.remove());
+  addBubble('assistant', 'Conversa reiniciada! Como posso ajudar?');
+}
+
+scrollBot();
+inputEl.focus();
+</script>
+{% endblock %}

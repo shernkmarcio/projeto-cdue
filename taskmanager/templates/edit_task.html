@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Editar Tarefa — TaskManager{% endblock %}
+{% block content %}
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="8" fill="#4F46E5"/>
+        <path d="M8 16l5 5 11-10" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>TaskManager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('dashboard') }}" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="{{ url_for('chat') }}" class="nav-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Chat
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar">{{ session['user_name'][0].upper() }}</div>
+      <div class="user-info"><span class="user-name">{{ session['user_name'] }}</span></div>
+      <a href="{{ url_for('logout') }}" class="logout-btn" title="Sair">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Editar Tarefa</h1>
+        <p class="page-sub">Atualize as informações da tarefa</p>
+      </div>
+      <a href="{{ url_for('dashboard') }}" class="btn">← Voltar</a>
+    </div>
+
+    <div class="edit-card">
+      <form method="POST">
+        <div class="field">
+          <label>Título *</label>
+          <input type="text" name="title" value="{{ task.title }}" required>
+        </div>
+        <div class="field">
+          <label>Descrição</label>
+          <textarea name="description" rows="3">{{ task.description or '' }}</textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Categoria</label>
+            <select name="category">
+              {% for c in ['Trabalho','Pessoal','Estudos','Saúde','Outros'] %}
+              <option {{ 'selected' if task.category == c }}>{{ c }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Prioridade</label>
+            <select name="priority">
+              {% for p in ['Alta','Média','Baixa'] %}
+              <option {{ 'selected' if task.priority == p }}>{{ p }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Data de conclusão</label>
+          <input type="date" name="due_date" value="{{ task.due_date or '' }}">
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <div class="status-toggle">
+            <span class="badge {{ 'badge-success' if task.done else 'badge-pending' }}">
+              {{ 'Concluída' if task.done else 'Pendente' }}
+            </span>
+            <form method="POST" action="{{ url_for('toggle_task', task_id=task.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-sm">
+                {{ 'Marcar como pendente' if task.done else 'Marcar como concluída' }}
+              </button>
+            </form>
+          </div>
+        </div>
+        <div class="form-actions">
+          <a href="{{ url_for('dashboard') }}" class="btn">Cancelar</a>
+          <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+{% endblock %}
